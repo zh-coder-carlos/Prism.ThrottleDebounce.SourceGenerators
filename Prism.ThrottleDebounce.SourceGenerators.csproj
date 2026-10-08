@@ -9,7 +9,7 @@
 		<Version>1.0.2</Version>
 		<Authors>Carlos</Authors>
 		<Description>Prism MVVM ThrottleDebounceCommandGenerator</Description>
-		<RepositoryUrl>https://github.com/1032076755/Prism.ThrottleDebounce.SourceGenerators.git</RepositoryUrl>
+		<RepositoryUrl>https://github.com/zh-coder-carlos/Prism.ThrottleDebounce.SourceGenerators.git</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
