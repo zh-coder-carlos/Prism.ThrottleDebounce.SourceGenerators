@@ -8,6 +8,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: production  # ✅ 如果 NuGet 上配了 environment，这里必须加
     permissions:
       id-token: write # 用于可信发布
       contents: read
@@ -30,4 +31,4 @@ jobs:
         run: dotnet pack --configuration Release --output nupkg --no-build
         
       - name: Push to NuGet.org
-        run: dotnet nuget push nupkg/*.nupkg --source https://api.nuget.org/v3/index.json
+        run: dotnet nuget push nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --skip-duplicate
