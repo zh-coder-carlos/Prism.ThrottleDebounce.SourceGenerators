@@ -20,20 +20,14 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '8.0.x' # 确保是 8.0.300+ 版本
 
       - name: Build the project
         run: dotnet build --configuration Release
 
       - name: Pack NuGet package
         run: dotnet pack --configuration Release --output nupkg --no-build
-
-      # ✅ 安装 nuget.exe（支持 OIDC）
-      - name: Install NuGet.exe
-        uses: nuget/setup-nuget@v2
-        with:
-          nuget-version: '6.x'
-
-      # ✅ 使用 nuget.exe 推送（自动触发 OIDC）
+        
+      # ✅ 关键修改：使用 dotnet nuget push + --api-key ""
       - name: Push to NuGet.org
-        run: nuget push nupkg/*.nupkg -SkipDuplicate -Source https://api.nuget.org/v3/index.json
+        run: dotnet nuget push nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --api-key "" --skip-duplicate
