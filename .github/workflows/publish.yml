@@ -23,10 +23,11 @@ jobs:
           # 建议使用较新的 LTS 版本以获得更好的性能和兼容性
           dotnet-version: '8.0.x' 
 
+      - name: Build the project
+        run: dotnet build --configuration Release
+
       - name: Pack NuGet package
-        run: dotnet pack --configuration Release --output nupkg
-        # 注意：不要在这里硬编码版本号，除非你明确知道自己在做什么
-        # 让 .csproj 中的 <Version> 或 Git Tag 来控制版本
+        run: dotnet pack --configuration Release --output nupkg --no-build
         
       - name: Push to NuGet.org
         run: dotnet nuget push nupkg/*.nupkg --source https://api.nuget.org/v3/index.json
