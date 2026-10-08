@@ -28,6 +28,5 @@ jobs:
       - name: Pack NuGet package
         run: dotnet pack --configuration Release --output nupkg --no-build
         
-      # ✅ 关键修改：使用 dotnet nuget push + --api-key ""
       - name: Push to NuGet.org
-        run: dotnet nuget push nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --api-key "" --skip-duplicate
+        run: dotnet nuget push nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

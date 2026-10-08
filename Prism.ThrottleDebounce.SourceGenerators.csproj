@@ -5,7 +5,7 @@
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 		<LangVersion>latest</LangVersion>
 		<IsPackable>true</IsPackable>
-		<PackageId>Prism.ThrottleDebounce.SourceGenerators</PackageId>
+		<PackageId>ThrottleDebounce.SourceGenerators</PackageId>
 		<Version>1.0.2</Version>
 		<Authors>Carlos</Authors>
 		<Description>Prism MVVM ThrottleDebounceCommandGenerator</Description>
