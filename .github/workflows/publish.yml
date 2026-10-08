@@ -4,30 +4,36 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:  # ✅ 新增：允许手动触发
+  workflow_dispatch:
+
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: production
     permissions:
-      id-token: write # 用于可信发布
+      id-token: write
       contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ✅ 关键步骤：显式安装 .NET SDK
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          # netstandard2.0 兼容 .NET Core 2.1+ 或 .NET 5+
-          # 建议使用较新的 LTS 版本以获得更好的性能和兼容性
-          dotnet-version: '8.0.x' 
+          dotnet-version: '8.0.x'
 
       - name: Build the project
         run: dotnet build --configuration Release
 
       - name: Pack NuGet package
         run: dotnet pack --configuration Release --output nupkg --no-build
-        
+
+      # ✅ 安装 nuget.exe（支持 OIDC）
+      - name: Install NuGet.exe
+        uses: nuget/setup-nuget@v2
+        with:
+          nuget-version: '6.x'
+
+      # ✅ 使用 nuget.exe 推送（自动触发 OIDC）
       - name: Push to NuGet.org
-        run: dotnet nuget push nupkg/*.nupkg --source nuget.org --skip-duplicate
+        run: nuget push nupkg/*.nupkg -SkipDuplicate -Source https://api.nuget.org/v3/index.json
