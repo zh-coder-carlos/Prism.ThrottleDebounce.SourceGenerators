@@ -9,24 +9,24 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write  # ✅ 必须添加：允许请求 OIDC 令牌
-      contents: read   # ✅ 推荐添加：允许读取仓库内容
+      id-token: write # 用于可信发布
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
+      # ✅ 关键步骤：显式安装 .NET SDK
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          # netstandard2.0 兼容 .NET Core 2.1+ 或 .NET 5+
+          # 建议使用较新的 LTS 版本以获得更好的性能和兼容性
+          dotnet-version: '8.0.x' 
 
-      - name: Extract version from tag
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_ENV"
-
-      - name: Pack
-        run: dotnet pack --configuration Release --output nupkg -p:Version=${{ env.VERSION }}
+      - name: Pack NuGet package
+        run: dotnet pack --configuration Release --output nupkg
+        # 注意：不要在这里硬编码版本号，除非你明确知道自己在做什么
+        # 让 .csproj 中的 <Version> 或 Git Tag 来控制版本
         
-      - name: List generated packages
-        run: ls -la nupkg/
-        
-      - name: Push to NuGet
-        run: dotnet nuget push nupkg/*.nupkg --source https://api.nuget.org/v3/index.json --skip-duplicate
+      - name: Push to NuGet.org
+        run: dotnet nuget push nupkg/*.nupkg --source https://api.nuget.org/v3/index.json
