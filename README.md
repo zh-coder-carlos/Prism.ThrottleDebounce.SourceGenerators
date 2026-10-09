@@ -1,4 +1,4 @@
-# Prism.ThrottleDebounce.SourceGenerators
+# SourceGenerators.Toolkit.Prism
 
 一个面向 Prism（WPF）MVVM 项目的源生成器（Source Generator），通过简单的特性标注，为方法自动生成带 **节流（Throttle）** 或 **防抖（Debounce）** 行为的 `DelegateCommand`，无需手写样板代码。
 
@@ -16,7 +16,7 @@
 通过 NuGet 安装：
 
 ```bash
-dotnet add package Prism.ThrottleDebounce.SourceGenerators
+dotnet add package SourceGenerators.Toolkit.Prism
 ```
 
 > 使用本生成器的项目需要同时引用以下依赖（生成代码会在编译期展开到你的项目中）：
@@ -32,7 +32,7 @@ dotnet add package Prism.ThrottleDebounce.SourceGenerators
 
 ```csharp
 using Prism.Mvvm;
-using Prism.ThrottleDebounce.SourceGenerators;
+using SourceGenerators.Toolkit.Prism;
 
 public partial class SearchViewModel : BindableBase
 {

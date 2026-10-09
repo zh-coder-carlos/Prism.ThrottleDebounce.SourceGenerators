@@ -5,106 +5,125 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Prism.ThrottleDebounce.SourceGenerators
+namespace SourceGenerators.Toolkit.Prism
 {
     [Generator]
-    public class ThrottleDebounceCommandGenerator : ISourceGenerator
+    public class ThrottleDebounceCommandGenerator : IIncrementalGenerator
     {
-        public void Initialize(GeneratorInitializationContext context)
+        public void Initialize(IncrementalGeneratorInitializationContext context)
         {
-            context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
+            // 2. 分别创建两个特性的管道
+            var debouncePipeline = context.SyntaxProvider.ForAttributeWithMetadataName(
+                "SourceGenerators.Toolkit.Prism.DebounceCommandAttribute",
+                predicate: static (node, _) => node is MethodDeclarationSyntax,
+                transform: static (ctx, _) => GetCommandInfo(ctx, isDebounce: true)
+            ).Where(static info => info != null);
+
+            var throttlePipeline = context.SyntaxProvider.ForAttributeWithMetadataName(
+                "SourceGenerators.Toolkit.Prism.ThrottleCommandAttribute",
+                predicate: static (node, _) => node is MethodDeclarationSyntax,
+                transform: static (ctx, _) => GetCommandInfo(ctx, isDebounce: false)
+            ).Where(static info => info != null);
+
+            // 3. 分别注册两个管道的输出
+            context.RegisterSourceOutput(debouncePipeline, static (spc, info) =>
+            {
+                if (info != null)
+                {
+                    spc.AddSource($"{info.ClassName}.{info.MethodName}.g.cs", GenerateCode(info));
+                }
+            });
+
+            context.RegisterSourceOutput(throttlePipeline, static (spc, info) =>
+            {
+                if (info != null)
+                {
+                    spc.AddSource($"{info.ClassName}.{info.MethodName}.g.cs", GenerateCode(info));
+                }
+            });
         }
 
-        public void Execute(GeneratorExecutionContext context)
+        // 4. 提取方法元数据的核心逻辑
+        private static CommandGenerationInfo? GetCommandInfo(GeneratorAttributeSyntaxContext ctx, bool isDebounce)
         {
-            if (context.SyntaxReceiver is not SyntaxReceiver receiver) return;
+            var methodSymbol = ctx.TargetSymbol as IMethodSymbol;
+            if (methodSymbol == null) return null;
 
-            foreach (var methodDeclaration in receiver.CandidateMethods)
+            var attrData = ctx.Attributes[0];
+            var classSymbol = methodSymbol.ContainingType;
+
+            // 安全提取参数
+            var delayMs = attrData.ConstructorArguments.Length > 0
+                ? attrData.ConstructorArguments[0].Value?.ToString() ?? "300"
+                : "300";
+
+            var leadingArg = attrData.NamedArguments.FirstOrDefault(x => x.Key == "Leading");
+            var trailingArg = attrData.NamedArguments.FirstOrDefault(x => x.Key == "Trailing");
+            var canExecuteArg = attrData.NamedArguments.FirstOrDefault(x => x.Key == "CanExecute");
+
+            string leading = leadingArg.Value.Value?.ToString()?.ToLower() ?? (isDebounce ? "false" : "true");
+            string trailing = trailingArg.Value.Value?.ToString()?.ToLower() ?? "true";
+
+            // 健壮地提取 CanExecute 字符串，避免直接 ToString() 产生 "null" 字面量
+            string canExecute = canExecuteArg.Value.Value is string str && !string.IsNullOrEmpty(str)
+                ? str
+                : "null";
+
+            // 处理泛型和参数
+            var parameters = methodSymbol.Parameters;
+            string paramList = "";
+            string delegateParamList = "";
+            string genericArgs = "";
+
+            if (parameters.Length > 0)
             {
-                var semanticModel = context.Compilation.GetSemanticModel(methodDeclaration.SyntaxTree);
-                var methodSymbol = semanticModel.GetDeclaredSymbol(methodDeclaration) as IMethodSymbol;
+                var paramDetails = parameters.Select(p => (
+                    Type: p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                    Name: p.Name));
 
-                if (methodSymbol == null) continue;
+                paramList = string.Join(", ", paramDetails.Select(p => p.Name));
+                delegateParamList = string.Join(", ", paramDetails.Select(p => $"{p.Type} {p.Name}"));
+                genericArgs = "<" + string.Join(", ", paramDetails.Select(p => p.Type)) + ">";
+            }
 
-                var attrData = methodSymbol.GetAttributes()
-                    .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() is
-                        "Prism.ThrottleDebounce.SourceGenerators.DebounceCommandAttribute" or
-                        "Prism.ThrottleDebounce.SourceGenerators.ThrottleCommandAttribute");
+            return new CommandGenerationInfo
+            {
+                NamespaceName = classSymbol.ContainingNamespace.ToDisplayString(),
+                ClassName = classSymbol.Name,
+                MethodName = methodSymbol.Name,
+                DelayMs = delayMs,
+                IsDebounce = isDebounce,
+                Leading = leading,
+                Trailing = trailing,
+                CanExecute = canExecute,
+                GenericArgs = genericArgs,
+                ParamList = paramList,
+                DelegateParamList = delegateParamList
+            };
+        }
 
-                if (attrData == null) continue;
-
-                var delayMs = attrData.ConstructorArguments[0].Value?.ToString() ?? "300";
-                var isDebounce = attrData.AttributeClass!.ToDisplayString() ==
-                                 "Prism.ThrottleDebounce.SourceGenerators.DebounceCommandAttribute";
-
-                var leading = attrData.NamedArguments.FirstOrDefault(x => x.Key == "Leading").Value.Value?.ToString()?.ToLower() ?? (isDebounce ? "false" : "true");
-                var trailing = attrData.NamedArguments.FirstOrDefault(x => x.Key == "Trailing").Value.Value?.ToString()?.ToLower() ?? "true";
-
-                var classSymbol = methodSymbol.ContainingType;
-                var namespaceName = classSymbol.ContainingNamespace.ToDisplayString();
-                var className = classSymbol.Name;
-                var methodName = methodSymbol.Name;
-                var commandName = $"{methodName}Command";
-
-                var parameters = methodSymbol.Parameters;
-                bool hasParameter = parameters.Length > 0;
-
-                string paramList = "";
-                string delegateParamList = "";
-                string genericArgs = "";
-
-                if (hasParameter)
-                {
-                    var paramDetails = parameters.Select(p => (
-                        Type: p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                        Name: p.Name));
-
-                    paramList = string.Join(", ", paramDetails.Select(p => p.Name));
-                    delegateParamList = string.Join(", ", paramDetails.Select(p => $"{p.Type} {p.Name}"));
-                    genericArgs = "<" + string.Join(", ", paramDetails.Select(p => p.Type)) + ">";
-                }
-
-                string generatedCode = $@"
+        // 5. 代码生成逻辑（与原逻辑保持一致）
+        private static SourceText GenerateCode(CommandGenerationInfo info)
+        {
+            string generatedCode = $@"
 // <auto-generated/>
 #pragma warning disable
 #nullable enable
-namespace {namespaceName}
+namespace {info.NamespaceName}
 {{
-    partial class {className}
+    partial class {info.ClassName}
     {{
-        public global::Prism.Commands.DelegateCommand{genericArgs} {commandName} => field ??= new global::Prism.Commands.DelegateCommand{genericArgs}(
-            ThrottleDebounce.{(isDebounce ? "Debouncer" : "Throttler")}.{(isDebounce ? "Debounce" : "Throttle")}(
-                new System.Action{genericArgs}(({delegateParamList}) => {methodName}({paramList})), 
-                System.TimeSpan.FromMilliseconds({delayMs}), 
-                leading: {leading}, 
-                trailing: {trailing}
-            ).Invoke
+        public global::Prism.Commands.DelegateCommand{info.GenericArgs} {info.MethodName}Command => field ??= new global::Prism.Commands.DelegateCommand{info.GenericArgs}(
+            ThrottleDebounce.{(info.IsDebounce ? "Debouncer" : "Throttler")}.{(info.IsDebounce ? "Debounce" : "Throttle")}(
+                new System.Action{info.GenericArgs}(({info.DelegateParamList}) => {info.MethodName}({info.ParamList})), 
+                System.TimeSpan.FromMilliseconds({info.DelayMs}), 
+                leading: {info.Leading}, 
+                trailing: {info.Trailing}
+            ).Invoke, {info.CanExecute}
         );
     }}
 }}";
-                context.AddSource($"{className}.{methodName}.g.cs", SourceText.From(generatedCode, Encoding.UTF8));
-            }
-        }
-
-        private class SyntaxReceiver : ISyntaxReceiver
-        {
-            public List<MethodDeclarationSyntax> CandidateMethods { get; } = new();
-
-            public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
-            {
-                if (syntaxNode is MethodDeclarationSyntax methodSyntax && methodSyntax.AttributeLists.Count > 0)
-                {
-                    bool hasTargetAttribute = methodSyntax.AttributeLists
-                        .SelectMany(al => al.Attributes)
-                        .Any(a => a.Name.ToString() is "DebounceCommand" or "ThrottleCommand"
-                                             or "DebounceCommandAttribute" or "ThrottleCommandAttribute");
-
-                    if (hasTargetAttribute)
-                    {
-                        CandidateMethods.Add(methodSyntax);
-                    }
-                }
-            }
+            return SourceText.From(generatedCode, Encoding.UTF8);
         }
     }
 }

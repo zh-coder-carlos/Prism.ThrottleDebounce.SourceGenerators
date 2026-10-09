@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Prism.ThrottleDebounce.SourceGenerators
+namespace SourceGenerators.Toolkit.Prism
 {
-    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
     public class DebounceCommandAttribute : Attribute
     {
         public int DelayMs { get; }
